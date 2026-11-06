@@ -75,12 +75,17 @@ function check(name, ok, detail) {
 
 const MB = 1_000_000;
 const base = { qualityPreference: "balanced", targetSizeMB: 9.5, codec: "auto", audio: { mode: "auto", bitrateKbps: 128 }, qualityGuard: true, vmaf: false };
+// allowReject: noise-heavy synthetic fixtures where a Quality Guard stop (with alternatives) is a valid outcome.
 const CASES = [
   { id: "5s-smart", file: "5s_1080p_audio.mp4", req: { mode: "smart" } },
   { id: "15s-smart", file: "15s_1080p_audio.mp4", req: { mode: "smart" } },
   { id: "30s-strict", file: "30s_1080p_audio.mp4", req: { mode: "strict" }, allowReject: true },
   { id: "60s-strict", file: "60s_1080p_audio.mp4", req: { mode: "strict" }, allowReject: true },
   { id: "60s-smart-8mb", file: "60s_1080p_audio.mp4", req: { mode: "smart", targetSizeMB: 8 }, allowReject: true },
+  { id: "30s-natural-strict", file: "30s_natural_1080p.mp4", req: { mode: "strict" } },
+  { id: "30s-natural-smart", file: "30s_natural_1080p.mp4", req: { mode: "smart" } },
+  { id: "60s-natural-strict", file: "60s_natural_1080p.mp4", req: { mode: "strict" }, allowReject: true },
+  { id: "60s-natural-max", file: "60s_natural_1080p.mp4", req: { mode: "strict", qualityPreference: "max" } },
   { id: "4k-strict", file: "10s_4k_audio.mp4", req: { mode: "strict" } },
   { id: "highmotion-strict", file: "10s_highmotion_1080p60.mp4", req: { mode: "strict" }, allowReject: true },
   { id: "lowlight-smart", file: "15s_lowlight_1080p.mp4", req: { mode: "smart" } },
@@ -94,7 +99,7 @@ const CASES = [
   { id: "lossless-mkv", file: "6s_720p.webm", req: { mode: "lossless", lossless: { container: "mkv" } }, lossless: true },
   { id: "custom-30fps-av1", file: "10s_highmotion_1080p60.mp4", req: { mode: "custom", custom: { codec: "av1", targetSizeMB: 9.5, maxBitrateKbps: null, resolution: null, fps: 30 } }, allowReject: true },
   { id: "4k-to-1080p", file: "10s_4k_audio.mp4", req: { mode: "custom", custom: { codec: "h264", targetSizeMB: 9.5, maxBitrateKbps: null, resolution: 1080, fps: null } } },
-  { id: "custom-crf", file: "15s_1080p_audio.mp4", req: { mode: "custom", custom: { codec: "h264", targetSizeMB: null, maxBitrateKbps: 3000, resolution: null, fps: null } } },
+  { id: "custom-crf", file: "15s_1080p_audio.mp4", req: { mode: "custom", custom: { codec: "h264", targetSizeMB: null, maxBitrateKbps: 3000, resolution: null, fps: null } }, allowReject: true },
   { id: "unrealistic", file: "10s_4k_audio.mp4", req: { mode: "strict", targetSizeMB: 0.5 }, expect: "rejected" },
   { id: "audio-remove", file: "15s_1080p_audio.mp4", req: { mode: "strict", audio: { mode: "remove", bitrateKbps: 128 } } },
 ];

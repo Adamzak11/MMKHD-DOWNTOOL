@@ -26,5 +26,10 @@ gen 10s_mkv_vp9;         $F -f lavfi -i "$SRC" -f lavfi -i "sine=frequency=330:s
 gen 6s_webm;             $F -f lavfi -i "testsrc2=s=1280x720:r=30" -t 6 -c:v libvpx-vp9 -b:v 4M -deadline realtime -cpu-used 8 fixtures/6s_720p.webm
 gen small_already_ok;    $F -f lavfi -i "testsrc2=s=1280x720:r=30" $AUD -t 6 -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 96k -shortest fixtures/6s_720p_small.mp4
 gen 10bit_hevc;          $F -f lavfi -i "$SRC" -t 6 -c:v libx265 -preset ultrafast -crf 14 -pix_fmt yuv420p10le -tag:v hvc1 -x265-params log-level=error fixtures/6s_hevc_10bit.mp4
+# "Natural" profile: spatially correlated grain + light temporal grain, ~12 Mbps at CRF 16 —
+# behaves like typical phone footage (the noise-heavy fixtures above are deliberate worst cases).
+NAT="testsrc2=s=1920x1080:r=30,noise=c0s=30:c1s=10:c2s=10,gblur=sigma=0.9,noise=alls=2:allf=t"
+gen 30s_natural;         $F -f lavfi -i "$NAT" $AUD -t 30 $HQ -c:a aac -b:a 128k -shortest fixtures/30s_natural_1080p.mp4
+gen 60s_natural;         $F -f lavfi -i "$NAT" $AUD -t 60 $HQ -c:a aac -b:a 128k -shortest fixtures/60s_natural_1080p.mp4
 echo "this is not a video" > fixtures/not_a_video.mp4
 ls -la fixtures
