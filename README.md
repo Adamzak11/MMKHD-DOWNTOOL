@@ -247,7 +247,30 @@ The e2e suite uploads each fixture, runs the job, downloads the output and check
 
 Fixtures: 5 s / 15 s / 30 s / 60 s 1080p with audio, 10 s 4K, 10 s 1080p60 high-motion (heavy temporal noise — a deliberate worst case), 15 s low-light, 15 s without audio, vertical MOV, rotated MOV, VP9/Opus MKV, WebM, an already-small MP4 (stream-copy path), 10-bit HEVC, and a non-video file.
 
-TEST_RESULTS_PLACEHOLDER
+### Results (FFmpeg 6.1.1, 4 vCPU, 2 jobs in parallel)
+
+Real encodes, verified independently by the e2e script. Target 9.5 MB unless noted; "realistic" fixtures behave like ~12 Mbps phone footage, the others are deliberately noise-heavy worst cases.
+
+| Case | Outcome | Size | Avg bitrate | Codec / res | SSIM · PSNR | Time |
+| --- | --- | --- | --- | --- | --- | --- |
+| 5 s 1080p, Smart | ✅ | 6.20 MB* | 9.89 Mbps | H.264 1080p30 | 0.970 · 39.9 dB | 11 s |
+| 30 s 1080p realistic, Strict | ✅ | 9.21 MB | 2.46 Mbps | H.265 1080p30 (auto) | 0.949 · 39.1 dB | ~2 min |
+| 60 s 1080p realistic, Strict, *Max compression* | ✅ | 9.25 MB | 1.23 Mbps | H.265 1080p30 | 0.883 · 35.6 dB | ~3 min |
+| 60 s 1080p realistic, Strict, *Balanced* | ⛔ Quality Guard stop + alternatives | — | — | — | below 0.930 | — |
+| 10 s 4K → 1080p (Custom) | ✅ | 9.27 MB | 7.42 Mbps | H.264 1080p30 | 0.982 · 43.7 dB | 34 s |
+| 15 s 1080p noisy, Smart | ✅ | 9.21 MB | 4.90 Mbps | H.264 1080p30 | 0.950 · 37.3 dB | 62 s |
+| 5 s rotated MOV (phone) | ✅ | 5.74 MB | 9.16 Mbps | H.264 1080×1920 | 0.966 · 39.4 dB | 13 s |
+| 8 s vertical MOV, H.265 | ✅ | 9.12 MB | 9.12 Mbps | H.265 1080×1920 | 0.967 · 39.9 dB | 51 s |
+| 6 s 10-bit HEVC source | ✅ | 6.91 MB | 9.22 Mbps | H.264 1080p | 0.976 · 40.6 dB | 29 s |
+| 6 s 720p already small | ✅ stream copy, no re-encode | 2.35 MB | 3.14 Mbps | copy | identical | 1 s |
+| Lossless H.264 (5 s) | ✅ bit-exact, MD5 of every frame | 34.5 MB | 55 Mbps | H.264 QP 0 | ∞ | 9 s |
+| Lossless FFV1 MKV (WebM source) | ✅ bit-exact | 17.9 MB | 23.8 Mbps | FFV1 | ∞ | 4 s |
+| 30 s / 60 s noisy, 4K noisy, low-light, no-audio @ 5 MB, VP9/Opus | ⛔ Quality Guard stop after H.264 → H.265 → slower preset; alternatives offered | — | — | — | 0.77 – 0.93 | — |
+| 10 s 4K @ 0.5 MB | ⛔ refused before encoding ("unrealistic") + alternatives | — | — | — | — | <1 s |
+
+\* Short clips are limited by the 10 Mbps average rule (5 s → max 6.22 MB), not by the 9.5 MB target.
+
+Every successful output passed: size ≤ limit, average < 10 Mbps, reported bitrate exact, duration / FPS / resolution preserved (or as requested, never below 1080p), audio present/absent as requested, A/V start offset 0 ms and length Δ ≤ 13 ms, full decode without errors, original byte-identical. All 16 negative/security checks passed (invalid file, `.exe`, path traversal, unknown ids, schema errors, cross-session access → 404, HTTP range, frame PNG, cancellation, TikTok URL validation, rights enforcement).
 
 ---
 

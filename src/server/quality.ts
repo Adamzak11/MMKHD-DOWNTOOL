@@ -58,15 +58,17 @@ export async function measureQuality(
   const fpsChanged = !!(refFps && distFps && Math.abs(refFps - distFps) / refFps > 0.01);
   const scaled = r.w !== d.w || r.h !== d.h;
 
-  const distChain = [scaled ? `scale=${r.w}:${r.h}:flags=bicubic` : null, `format=${fmt}`, "setpts=PTS-STARTPTS"].filter(Boolean).join(",");
-  const refChain = [fpsChanged ? `fps=${distFps}` : null, `format=${fmt}`, "setpts=PTS-STARTPTS"].filter(Boolean).join(",");
+  // A deliberate resolution change is not "damage": the reference is scaled to the output size with the same
+  // lanczos filter the encoder used, so the score measures encoding loss at the delivered resolution.
+  const distChain = [`format=${fmt}`, "setpts=PTS-STARTPTS"].join(",");
+  const refChain = [fpsChanged ? `fps=${distFps}` : null, scaled ? `scale=${d.w}:${d.h}:flags=lanczos` : null, `format=${fmt}`, "setpts=PTS-STARTPTS"].filter(Boolean).join(",");
   const n = useVmaf ? 3 : 2;
   const labels = (p: string) => Array.from({ length: n }, (_, i) => `[${p}${i}]`).join("");
   let graph = `[0:v]${distChain},split=${n}${labels("d")};[1:v]${refChain},split=${n}${labels("r")};[d0][r0]ssim;[d1][r1]psnr`;
   if (useVmaf) graph += `;[d2][r2]libvmaf=n_threads=4`;
 
   const duration = Math.min(refInfo.duration, distInfo.duration);
-  const workload = r.w * r.h * (refFps ?? 30) * duration;
+  const workload = (scaled ? d.w * d.h : r.w * r.h) * (refFps ?? 30) * duration;
   const FULL_LIMIT = 1920 * 1080 * 30 * 120; // ≈ 2 minutes of 1080p30
   const segLen = 2;
   const segments: number[] = [];
@@ -106,7 +108,7 @@ export async function measureQuality(
   const psnr = allInf ? Infinity : mean(results.map((x) => x.psnr?.avg));
   const psnrMins = results.map((x) => x.psnr?.min).filter((x): x is number => typeof x === "number" && Number.isFinite(x));
   const notes: string[] = [];
-  if (scaled) notes.push(`Output was scaled back to ${r.w}×${r.h} (bicubic) for comparison; scores include the resolution change.`);
+  if (scaled) notes.push(`Measured at the output resolution ${d.w}×${d.h}: the source was downscaled the same way for comparison, so scores reflect encoding loss, not the (requested) resolution change.`);
   if (fpsChanged) notes.push(`Source was resampled to ${distFps?.toFixed(2)} FPS for frame alignment; scores are approximate.`);
   if (opts.vmaf && !useVmaf) notes.push("VMAF unavailable: this FFmpeg build has no libvmaf filter.");
   const coverage = segments.length
