@@ -1,0 +1,10 @@
+# Netlify hosts the MAMATKILAT interface. Video processing needs FFmpeg and long-running jobs,
+# which Netlify Functions cannot provide — set BACKEND_URL (Site configuration → Environment
+# variables) to a server running the Docker image, e.g. https://mamatkilat-api.example.com
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"

@@ -43,10 +43,24 @@ export interface UploadHandle {
 }
 
 /** Streams the File to the server (the browser never reads it into memory) with real progress events. */
+/** Set at build time from BACKEND_URL: large uploads bypass the frontend host's proxy and go straight to the processing server. */
+const UPLOAD_BASE = (process.env.NEXT_PUBLIC_UPLOAD_BASE || "").replace(/\/+$/, "");
+
 export function uploadFile(file: File, onProgress: (loaded: number, total: number) => void): UploadHandle {
   const xhr = new XMLHttpRequest();
-  const promise = new Promise<StoredFileSummary>((resolve, reject) => {
-    xhr.open("POST", "/api/upload");
+  let aborted = false;
+  const promise = new Promise<StoredFileSummary>(async (resolve, reject) => {
+    let url = "/api/upload";
+    if (UPLOAD_BASE) {
+      try {
+        const { token } = await call<{ token: string }>("/api/upload-token");
+        url = `${UPLOAD_BASE}/api/upload?token=${encodeURIComponent(token)}`;
+      } catch (e) {
+        return reject(e);
+      }
+      if (aborted) return reject(new ApiError("Upload cancelled.", 0, "aborted"));
+    }
+    xhr.open("POST", url);
     xhr.setRequestHeader("x-file-name", encodeURIComponent(file.name));
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
     xhr.upload.onprogress = (e) => onProgress(e.loaded, e.lengthComputable ? e.total : file.size);
@@ -62,5 +76,11 @@ export function uploadFile(file: File, onProgress: (loaded: number, total: numbe
     xhr.onabort = () => reject(new ApiError("Upload cancelled.", 0, "aborted"));
     xhr.send(file);
   });
-  return { promise, abort: () => xhr.abort() };
+  return {
+    promise,
+    abort: () => {
+      aborted = true;
+      xhr.abort();
+    },
+  };
 }

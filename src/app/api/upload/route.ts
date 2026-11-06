@@ -8,6 +8,7 @@ import { getSessionId } from "@/server/session";
 import { rateLimit } from "@/server/ratelimit";
 import { allocateFile, deleteFile, extOf, mimeFor, sanitizeName, toSummary, VIDEO_EXTENSIONS, writeMeta } from "@/server/storage";
 import { probe } from "@/server/ffprobe";
+import { corsHeaders, verifyUploadToken } from "@/server/upload-token";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,8 +17,21 @@ export const dynamic = "force-dynamic";
  * Streaming upload: the raw request body is piped straight to disk (never buffered in memory).
  * Headers: x-file-name (URI-encoded original filename), content-length (optional but checked).
  */
-export const POST = handler(async (req: Request) => {
-  const owner = await getSessionId();
+export async function OPTIONS(req: Request) {
+  return new Response(null, { status: 204, headers: corsHeaders(req.headers.get("origin")) });
+}
+
+export async function POST(req: Request) {
+  const res = await upload(req);
+  for (const [k, v] of Object.entries(corsHeaders(req.headers.get("origin")))) res.headers.set(k, v);
+  return res;
+}
+
+const upload = handler(async (req: Request) => {
+  // Direct uploads from a separately hosted frontend carry a signed token instead of the session cookie.
+  const token = new URL(req.url).searchParams.get("token");
+  const owner = token ? verifyUploadToken(token) : await getSessionId();
+  if (!owner) throw new HttpError(401, "Upload link expired — please try again.", "bad_token");
   rateLimit(`upload:${owner}`, 10, 20);
   const rawName = decodeURIComponent(req.headers.get("x-file-name") || "");
   const name = sanitizeName(rawName);

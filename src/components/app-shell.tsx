@@ -69,7 +69,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Link>
       </header>
 
-      <main className="mx-auto w-full max-w-[1240px] px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-16 lg:pt-10">{children}</main>
+      <main className="mx-auto w-full max-w-[1240px] px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-16 lg:pt-10">
+        {caps && !caps.ffmpegVersion && (
+          <div role="alert" className="mb-6 rounded-xl border border-warn/30 bg-warn/5 px-4 py-3 text-[13px] text-muted">
+            <span className="font-semibold text-fg">Processing engine offline.</span> FFmpeg is not available on this server, so uploads, compression and analysis cannot run.
+            If this site is on Netlify or another static/serverless host, set <code className="text-fg">BACKEND_URL</code> to a server running the MAMATKILAT Docker image.
+          </div>
+        )}
+        {children}
+      </main>
 
       {/* Mobile bottom navigation */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-ink-900/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Main">

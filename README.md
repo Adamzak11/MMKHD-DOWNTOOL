@@ -105,6 +105,8 @@ npm start
 | `MAX_QUEUED_JOBS_PER_SESSION` | `3` | Queued + running jobs one session may have. |
 | `FILE_TTL_MIN` | `60` | Files are deleted this many minutes after creation. |
 | `FFMPEG_THREADS` | `0` | `0` = FFmpeg decides. |
+| `BACKEND_URL` | — | Frontend-only hosts (Netlify): processing server URL; `/api/*` is proxied there, uploads go direct. Read at build time. |
+| `FRONTEND_ORIGINS` | — | Backend: comma-separated frontend origins allowed to upload directly (CORS). |
 | `INSECURE_COOKIES` | `false` | Set `true` only when serving production over plain HTTP (e.g. LAN testing). |
 | `TIKTOK_PROVIDER_URL` | — | Endpoint of an authorized media provider (see below). |
 | `TIKTOK_PROVIDER_TOKEN` | — | Bearer token sent to that provider. |
@@ -216,6 +218,21 @@ Content-Type: application/json
 ## Deployment
 
 FFmpeg jobs can run for minutes and need CPU, RAM and local disk. Use a **persistent server or container**: a VPS, Docker host, Fly.io Machines, Railway, Render (web service), AWS ECS/EC2, Google Cloud Run *with a long request timeout and always-on CPU*, Kubernetes. **Do not** deploy to short-lived serverless functions (e.g. Vercel/Netlify functions) — they have execution limits, no FFmpeg and ephemeral disks between invocations.
+
+### Netlify (interface) + processing server
+
+Netlify cannot run this app's processing (no FFmpeg, short function limits, no persistent disk), but it can host the interface while a server does the work:
+
+```
+Browser ──► Netlify (Next.js UI) ──/api/* proxy──► Processing server (Docker image, FFmpeg)
+   └──────── large uploads, direct with signed token ────────┘
+```
+
+1. **Processing server** — deploy the Docker image (Railway, Render, Fly.io, a VPS…) with `SESSION_SECRET` and `FRONTEND_ORIGINS=https://<your-site>.netlify.app`. It must be reachable over HTTPS.
+2. **Netlify** — *Add new project → Import an existing project → GitHub →* this repo. `netlify.toml` already sets the build. Under *Site configuration → Environment variables* add `BACKEND_URL=https://<your-processing-server>` and redeploy.
+3. Every push to `master` redeploys the interface.
+
+How it works: `/api/*` requests are rewritten to `BACKEND_URL`, so the session cookie stays first-party on the Netlify domain. Because proxies cap request bodies (Next.js forwards only 10 MB), uploads fetch a 15-minute signed token from `/api/upload-token` and POST the file **directly** to the processing server (CORS limited to `FRONTEND_ORIGINS`); the token carries the session owner, so ownership checks still apply. Without `BACKEND_URL` the site deploys but shows **"Processing engine offline"**. Verified locally with the frontend and backend on separate origins: 45 MB direct upload, compression to 9.21 MB, playback and a byte-exact download through the proxy.
 
 ### Docker
 ```bash

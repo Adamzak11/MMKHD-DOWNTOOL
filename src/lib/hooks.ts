@@ -8,11 +8,18 @@ let capsPromise: Promise<Capabilities> | null = null;
 export function useCapabilities() {
   const [caps, setCaps] = useState<Capabilities | null>(null);
   useEffect(() => {
-    capsPromise ??= api.capabilities().catch((e) => {
+    capsPromise ??= api.capabilities().catch(() => {
       capsPromise = null;
-      throw e;
+      // Backend unreachable: report an engine with nothing available instead of failing silently.
+      return {
+        ffmpegVersion: null,
+        encoders: { h264: false, h265: false, av1: false, av1Encoder: null, ffv1: false, aac: false, alac: false },
+        metrics: { ssim: false, psnr: false, vmaf: false },
+        limits: { maxUploadMB: 0, maxDurationSec: 0, fileTtlMin: 0, maxDownloadMB: 0 },
+        tiktok: { oembed: false, providers: [] },
+      } satisfies Capabilities;
     });
-    capsPromise.then(setCaps).catch(() => {});
+    capsPromise.then(setCaps);
   }, []);
   return caps;
 }
