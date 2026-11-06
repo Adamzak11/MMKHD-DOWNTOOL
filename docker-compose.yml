@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        INSTALL_YTDLP: "false"
+    ports: ["3000:3000"]
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - mamat-data:/data
+    # FFmpeg is CPU-bound: give it real cores and a memory ceiling.
+    deploy:
+      resources:
+        limits: { cpus: "4", memory: 4g }
+    restart: unless-stopped
+volumes:
+  mamat-data:
