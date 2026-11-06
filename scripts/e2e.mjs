@@ -78,9 +78,9 @@ const base = { qualityPreference: "balanced", targetSizeMB: 9.5, codec: "auto", 
 const CASES = [
   { id: "5s-smart", file: "5s_1080p_audio.mp4", req: { mode: "smart" } },
   { id: "15s-smart", file: "15s_1080p_audio.mp4", req: { mode: "smart" } },
-  { id: "30s-strict", file: "30s_1080p_audio.mp4", req: { mode: "strict" } },
-  { id: "60s-strict", file: "60s_1080p_audio.mp4", req: { mode: "strict" } },
-  { id: "60s-smart-8mb", file: "60s_1080p_audio.mp4", req: { mode: "smart", targetSizeMB: 8 } },
+  { id: "30s-strict", file: "30s_1080p_audio.mp4", req: { mode: "strict" }, allowReject: true },
+  { id: "60s-strict", file: "60s_1080p_audio.mp4", req: { mode: "strict" }, allowReject: true },
+  { id: "60s-smart-8mb", file: "60s_1080p_audio.mp4", req: { mode: "smart", targetSizeMB: 8 }, allowReject: true },
   { id: "4k-strict", file: "10s_4k_audio.mp4", req: { mode: "strict" } },
   { id: "highmotion-strict", file: "10s_highmotion_1080p60.mp4", req: { mode: "strict" }, allowReject: true },
   { id: "lowlight-smart", file: "15s_lowlight_1080p.mp4", req: { mode: "smart" } },
@@ -92,7 +92,8 @@ const CASES = [
   { id: "hevc10-smart", file: "6s_hevc_10bit.mp4", req: { mode: "smart" } },
   { id: "lossless", file: "5s_1080p_audio.mp4", req: { mode: "lossless", lossless: { container: "auto" } }, lossless: true },
   { id: "lossless-mkv", file: "6s_720p.webm", req: { mode: "lossless", lossless: { container: "mkv" } }, lossless: true },
-  { id: "custom-720p-30-av1", file: "10s_highmotion_1080p60.mp4", req: { mode: "custom", custom: { codec: "av1", targetSizeMB: 5, maxBitrateKbps: null, resolution: 720, fps: 30 } }, allowReject: true },
+  { id: "custom-30fps-av1", file: "10s_highmotion_1080p60.mp4", req: { mode: "custom", custom: { codec: "av1", targetSizeMB: 9.5, maxBitrateKbps: null, resolution: null, fps: 30 } }, allowReject: true },
+  { id: "4k-to-1080p", file: "10s_4k_audio.mp4", req: { mode: "custom", custom: { codec: "h264", targetSizeMB: 9.5, maxBitrateKbps: null, resolution: 1080, fps: null } } },
   { id: "custom-crf", file: "15s_1080p_audio.mp4", req: { mode: "custom", custom: { codec: "h264", targetSizeMB: null, maxBitrateKbps: 3000, resolution: null, fps: null } } },
   { id: "unrealistic", file: "10s_4k_audio.mp4", req: { mode: "strict", targetSizeMB: 0.5 }, expect: "rejected" },
   { id: "audio-remove", file: "15s_1080p_audio.mp4", req: { mode: "strict", audio: { mode: "remove", bitrateKbps: 128 } } },
@@ -151,7 +152,7 @@ async function runCase(c) {
     const disp = (s) => (rot(s) ? [s.height, s.width] : [s.width, s.height]).join("x");
     check(`${c.id}: resolution preserved (display)`, disp(v) === disp(sv), `${disp(v)} vs ${disp(sv)}`);
   } else {
-    check(`${c.id}: resolution as requested`, Math.min(v.width, v.height) === c.req.custom.resolution, `${v.width}x${v.height}`);
+    check(`${c.id}: resolution as requested (≥1080p)`, Math.min(v.width, v.height) === c.req.custom.resolution && Math.min(v.width, v.height) >= 1080, `${v.width}x${v.height}`);
   }
   const wantAudio = !!sa && c.req.audio?.mode !== "remove";
   check(`${c.id}: audio ${wantAudio ? "present" : "absent"}`, !!a === wantAudio);

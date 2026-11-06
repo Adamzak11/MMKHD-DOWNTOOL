@@ -54,9 +54,16 @@ export function formatMbps(bps: number) {
   return bps >= 1e6 ? `${(bps / 1e6).toFixed(2)} Mbps` : `${Math.round(bps / 1e3)} kbps`;
 }
 
-/** Output dimensions for a requested short-side resolution. Never upscales; keeps aspect ratio; even sizes. */
+/**
+ * Minimum output resolution (short side). Output is never scaled below 1080p;
+ * sources that are already smaller keep their native resolution (never upscaled).
+ */
+export const MIN_OUTPUT_SHORT_SIDE = 1080;
+
+/** Output dimensions for a requested short-side resolution. Never upscales, never below 1080p; keeps aspect ratio; even sizes. */
 export function outputDims(srcW: number, srcH: number, shortSide: number | null) {
   const srcShort = Math.min(srcW, srcH);
+  if (shortSide) shortSide = Math.max(shortSide, MIN_OUTPUT_SHORT_SIDE);
   if (!shortSide || shortSide >= srcShort) return { width: srcW, height: srcH, scaled: false };
   const scale = shortSide / srcShort;
   const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
@@ -207,7 +214,7 @@ export function buildAlternatives(info: MediaInfo, req: CompressRequest, audioBp
     alts.push({ label: "Switch to H.265", description: `Same resolution & FPS, ~35% more efficient → ${r.f.replace("-", " ")}. Reduced browser compatibility.`, apply: { ...base, custom: { ...customBase, codec: "h265" } } });
   }
   const short = Math.min(v.width, v.height);
-  for (const s of [1080, 720, 540]) {
+  for (const s of [1440, 1080].filter((x) => x >= MIN_OUTPUT_SHORT_SIDE)) {
     if (s >= short) continue;
     const d = outputDims(v.width, v.height, s);
     const r = est(d.width, d.height, fps, audioBps, codec);
@@ -274,7 +281,8 @@ export function buildPlan(req: CompressRequest, info: MediaInfo, caps: Pick<Capa
   const dims = outputDims(v.width, v.height, custom?.resolution ?? null);
   const outFps = custom?.fps && v.fps && custom.fps < v.fps ? custom.fps : v.fps ?? 30;
   if (custom?.fps && v.fps && custom.fps >= v.fps) warnings.push(`Requested ${custom.fps} FPS is not below the source ${v.fps.toFixed(2)} FPS — keeping source FPS (frames are never invented).`);
-  if (custom?.resolution && !dims.scaled) warnings.push("Requested resolution is not below the source — keeping source resolution (no upscaling).");
+  if (custom?.resolution && custom.resolution < MIN_OUTPUT_SHORT_SIDE) warnings.push(`Minimum output resolution is ${MIN_OUTPUT_SHORT_SIDE}p — ${custom.resolution}p is not allowed.`);
+  else if (custom?.resolution && !dims.scaled) warnings.push("Requested resolution is not below the source — keeping source resolution (no upscaling).");
   const audio = decideAudio(req, info, "mp4");
   const targetMB = req.mode === "custom" ? custom?.targetSizeMB ?? null : req.targetSizeMB;
   const maxVideoBps = custom?.maxBitrateKbps ? custom.maxBitrateKbps * 1000 : null;

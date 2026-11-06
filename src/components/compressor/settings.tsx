@@ -1,7 +1,7 @@
 "use client";
 import { Archive, Gauge, ShieldCheck, SlidersHorizontal, Sparkles } from "lucide-react";
 import { Field, Segmented, Select, Toggle, cn } from "../ui";
-import { DEFAULT_TARGET_MB, SIZE_PRESETS_MB, QUALITY_THRESHOLDS } from "@/lib/plan";
+import { DEFAULT_TARGET_MB, MIN_OUTPUT_SHORT_SIDE, SIZE_PRESETS_MB, QUALITY_THRESHOLDS } from "@/lib/plan";
 import type { Capabilities, CompressRequest, CompressionMode, MediaInfo, QualityPreference } from "@/lib/types";
 import { useState } from "react";
 
@@ -126,11 +126,11 @@ export function CompressSettings({ req, setReq, caps, info }: { req: Omit<Compre
               options={[{ value: 0, label: "No extra cap (10 Mbps)" }, ...[8000, 6000, 5000, 4000, 3000, 2000, 1500, 1000, 600].map((k) => ({ value: k, label: `${k >= 1000 ? k / 1000 + " Mbps" : k + " kbps"}` }))]}
             />
           </Field>
-          <Field label="Resolution" hint={`source ${v.width}×${v.height}`}>
+          <Field label="Resolution" hint={`source ${v.width}×${v.height} · minimum ${MIN_OUTPUT_SHORT_SIDE}p`}>
             <Select
               value={req.custom!.resolution ?? 0}
               onChange={(n) => setCustom({ resolution: n || null })}
-              options={[{ value: 0, label: `Keep source (${short}p)` }, ...[2160, 1440, 1080, 720, 540, 480, 360].filter((s) => s < short).map((s) => ({ value: s, label: `${s}p` }))]}
+              options={[{ value: 0, label: `Keep source (${short}p)` }, ...[2160, 1440, 1080].filter((s) => s < short && s >= MIN_OUTPUT_SHORT_SIDE).map((s) => ({ value: s, label: `${s}p` }))]}
             />
           </Field>
           <Field label="Frame rate" hint={`source ${v.fps?.toFixed(2) ?? "?"} fps`}>

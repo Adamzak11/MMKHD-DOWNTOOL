@@ -132,16 +132,16 @@ Feasibility is graded from bits-per-pixel (`video bps / (width × height × fps)
 - **Smart Quality** — if the source already fits (size, ≤ 10 Mbps, MP4-compatible codecs) it is **stream-copied** with no re-encode. Otherwise it encodes 3–4 two-second samples at the quality-targeted CRF to learn what this content needs. If the projection (+15% margin) fits, a capped CRF encode is used — often well under the target with excellent quality. If not, or if Quality Guard rejects it, it falls back to 2-pass at the full budget.
 - **Strict Under Target** — 2-pass ABR at the computed bitrate (single-pass VBR for AV1), default 9.5 MB.
 - **Lossless** — H.264 `-qp 0` in MP4 when the pixel format allows it, otherwise FFV1 in MKV. Pixel format is never converted, audio is copied bit-exact (or stored as ALAC). Output is verified by hashing every decoded frame of source and output. No target size; output is usually *larger*.
-- **Custom** — codec, optional target size, maximum bitrate, resolution (short side, never upscaled), FPS (never increased), audio.
+- **Custom** — codec, optional target size, maximum bitrate, resolution (short side, never upscaled, **never below 1080p**), FPS (never increased), audio.
 
 ### 4. Retry engine (max 4 attempts)
 1. Encode, probe the output (video/audio present, duration within tolerance).
 2. **Over the limit** → correct the bitrate by the *measured* overshoot and retry.
 3. **Under the limit** → Quality Guard. Pass → done (if it undershot by > 12%, one retry raises the bitrate to use the budget; the best passing result is kept).
 4. **Quality below threshold** → the bitrate is *not* blindly lowered. Instead: switch to H.265 (when codec is Auto), then a slower preset.
-5. Still failing → stop, explain with the measured numbers, offer alternatives (H.265, downscale, 30 FPS, lower audio bitrate, a larger target computed for "good" quality). The below-threshold file is offered only behind an explicit "download anyway" button.
+5. Still failing → stop, explain with the measured numbers, offer alternatives (H.265, downscale to 1440p/1080p for larger sources, 30 FPS, lower audio bitrate, a larger target computed for "good" quality). The below-threshold file is offered only behind an explicit "download anyway" button.
 
-Resolution and FPS are **never** reduced silently — only through the Custom mode or an alternative the user clicks. Unrealistic targets are refused before encoding.
+**Minimum output resolution is 1080p** (`MIN_OUTPUT_SHORT_SIDE` in `src/lib/plan.ts`): output is never scaled below 1080p — sources already smaller than 1080p keep their native resolution (no upscaling). Resolution and FPS are **never** reduced silently — only through the Custom mode or an alternative the user clicks. Unrealistic targets are refused before encoding.
 
 ### 5. Quality Guard thresholds
 | Preference | CRF (x264 / x265 / AV1) | Gate |

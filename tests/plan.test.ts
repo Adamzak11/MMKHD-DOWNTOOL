@@ -38,10 +38,10 @@ describe("feasibility", () => {
 
 describe("outputDims", () => {
   it("never upscales and keeps aspect ratio with even sizes", () => {
-    expect(outputDims(1920, 1080, 720)).toEqual({ width: 1280, height: 720, scaled: true });
-    expect(outputDims(1080, 1920, 720)).toEqual({ width: 720, height: 1280, scaled: true });
+    expect(outputDims(3840, 2160, 1080)).toEqual({ width: 1920, height: 1080, scaled: true });
+    expect(outputDims(2160, 3840, 1440)).toEqual({ width: 1440, height: 2560, scaled: true });
     expect(outputDims(1280, 720, 1080)).toEqual({ width: 1280, height: 720, scaled: false });
-    const d = outputDims(1918, 1080, 541);
+    const d = outputDims(4094, 2304, 1080);
     expect(d.width % 2).toBe(0);
     expect(d.height % 2).toBe(0);
   });
@@ -78,6 +78,12 @@ describe("buildPlan", () => {
     expect(p.container).toBe("mkv");
     expect(p.codec).toBe("ffv1");
     expect(p.budget).toBeNull();
+  });
+  it("never goes below 1080p", () => {
+    expect(outputDims(1920, 1080, 720)).toEqual({ width: 1920, height: 1080, scaled: false });
+    expect(outputDims(3840, 2160, 720)).toEqual({ width: 1920, height: 1080, scaled: true });
+    const p = buildPlan(req({ targetSizeMB: 2 }), info(), null);
+    expect(p.alternatives.some((a) => /720p|540p/.test(a.label))).toBe(false);
   });
   it("never upsamples fps or resolution in custom mode", () => {
     const p = buildPlan(req({ mode: "custom", custom: { codec: "h264", targetSizeMB: 9.5, maxBitrateKbps: null, resolution: 2160, fps: 60 } }), info(), null);

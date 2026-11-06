@@ -16,7 +16,7 @@ export const compressRequestSchema = z.object({
       codec,
       targetSizeMB: z.number().min(0.5).max(4000).nullable(),
       maxBitrateKbps: z.number().int().min(100).max(10_000).nullable(),
-      resolution: z.number().int().min(144).max(4320).nullable(),
+      resolution: z.number().int().min(1080, "minimum output resolution is 1080p").max(4320).nullable(),
       fps: z.number().min(1).max(240).nullable(),
     })
     .optional(),
